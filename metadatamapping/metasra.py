@@ -163,7 +163,7 @@ def make_accession_and_attributes_table(archs4_annotated: pd.DataFrame, accessei
 
     :return:                    pandas.DataFrame with columns 'accession' and 'attribute'
     """
-    accession_and_attributes = archs4_annotated_deduplicated.loc[
+    accession_and_attributes = archs4_annotated.loc[
         :, 
         [accession_column, 'raw_biosample_metadata']
     ].rename(
@@ -174,4 +174,3 @@ def make_accession_and_attributes_table(archs4_annotated: pd.DataFrame, accessei
     ).dropna()
 
     return accession_and_attributes 
-    
