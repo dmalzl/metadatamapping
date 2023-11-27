@@ -185,3 +185,80 @@ def all_equal(x: pd.Series) -> bool:
     """
     ref = normalize_string(x.iloc[0])
     return all(normalize_string(item) == ref for _, item in x.items())
+
+
+def merge_to_annotated_metadata_frame(
+    biosample_metadata: pd.DataFrame, 
+    srauids_to_biosampleuids: pd.DataFrame,
+    ncbi_accessions: pd.DataFrame,
+    archs4_metadata: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    combines the passed pandas.DataFrames to a fully annotated ARCHS4 metadata set
+
+    :param biosample_metadata:          pandas.DataFrame containing BioSample metadata (see biosample_uids_to_metadata)
+    :param srauids_to_biosampleuids:    pandas.DataFrame containing the linked SRA to BioSample UIDs (see link.link_sra_to_biosample)
+    :param ncbi_accessions:             pandas.DataFrame containing the SRA accessions (see srauids_to_accessions)
+    :param archs4_metadata:             pandas.DataFrame containing the extracted ARCHS4 metadata (see archs4.get_filtered_sample_metadata)
+
+    :return:                            pandas.DataFrame containing annotated ARCHS4 metadata
+    """
+    biosample_uids_and_metadata = srauids_to_biosampleuids.merge(
+        biosample_metadata,
+        on = 'biosample',
+        how = 'inner'
+    )
+
+    accessions_biosample_metadata_uids = biosample_uids_and_metadata \
+        .rename(
+            columns = {
+                'sra': 'sra_uid',
+                'biosample': 'biosample_uid',
+                'title': 'biosample_title',
+                'attribute': 'raw_biosample_metadata'
+            }
+        ).merge(
+            ncbi_accessions.rename(
+                columns = {
+                    'uid': 'sra_uid'
+                }
+            ),
+            on = 'sra_uid',
+            how = 'inner'
+        )
+
+    archs4_annotated = accessions_biosample_metadata_uids.merge(
+        archs4_metadata.drop(
+            columns = [
+                    'srx_accession', 
+                    'biosample_accession'
+                ]
+        ).rename(
+            columns = {
+                'geo_accession': 'geo',
+                'title': 'geo_title',
+                'source_name_ch1': 'geo_source_name',
+                'characteristics_ch1': 'geo_metadata'
+            }
+        ),
+        on = 'geo',
+        how = 'inner'
+    )
+
+    # this is done in order to remove scrambled annotations due to spurious links to BioSample
+    spurious_duplication = archs4_annotated.sra_uid.duplicated(keep = False)
+    archs4_annotated_nonduplicated = archs4_annotated.loc[~spurious_duplication, :]
+    archs4_annotated_duplicated = archs4_annotated.loc[spurious_duplication, :]
+
+    all_equal_idx = archs4_annotated_duplicated[['geo_title', 'biosample_title']].apply(
+        all_equal,
+        axis = 1
+    )
+
+    archs4_annotated_deduplicated = pd.concat(
+        [
+            archs4_annotated_nonduplicated,
+            archs4_annotated_duplicated.loc[all_equal_idx, :]
+        ]
+    )
+    return archs4_annotated_deduplicated.reset_index(drop = True)
