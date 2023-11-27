@@ -102,7 +102,7 @@ def raw_metadata_to_json(metadata: pd.DataFrame, output_json: Union[PathLike, st
         for i, chunk in enumerate(chunks):
             convert_to_dict_and_write_json(
                 chunk, 
-                f'{output_file_prefix}_{i}.{output_file_suffix}'
+                f'{output_file_prefix}_{i+1}.{output_file_suffix}'
             )
 
     else:
