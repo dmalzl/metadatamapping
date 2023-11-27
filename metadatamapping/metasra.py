@@ -152,7 +152,7 @@ def metasra_output_json_to_dataframe(output_json: Union[PathLike, str]) -> pd.Da
     return metasra_df
         
 
-def make_accession_and_attributes_table(archs4_annotated: pd.DataFrame, accesseion_column: str = 'sample') -> pd.DataFrame:
+def make_accession_and_attributes_table(archs4_annotated: pd.DataFrame, accession_column: str = 'sample') -> pd.DataFrame:
     """
     takes an annotated ARCHS4 metdata table as returned by metadata.merge_to_annotated_metadata
     and extracts a given accession column and the raw BioSample attributes. removes samples
