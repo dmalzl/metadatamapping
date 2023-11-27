@@ -102,6 +102,8 @@ def combine_attribute_keys(metadata: dict[str, Any]) -> dict[str, Any]:
             continue
             
         name = key.split('|')[-1]
+        value = value.replace(';', '')
+        value = value.replace(':', '')
         attribute_kv_list.append(f'{name}: {value}')
     
     revised_metadata['attribute'] = '; '.join(attribute_kv_list)
