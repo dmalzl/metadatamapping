@@ -76,7 +76,7 @@ def convert_to_dict_and_write_json(metadata_rows: Iterable[pd.Series], output_js
         row.accession: convert_attributes_to_dict(row.attribute) for _, row in metadata_rows
     }
     with open(output_json, 'w') as jsonfile:
-        json.dump(json_dict, jsonfile, indent=4, separators=(',', ': ')
+        json.dump(json_dict, jsonfile, indent=4, separators=(',', ': '))
 
 
 def raw_metadata_to_json(metadata: pd.DataFrame, output_json: Union[PathLike, str], chunksize = -1) -> None:
