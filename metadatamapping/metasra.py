@@ -110,3 +110,44 @@ def raw_metadata_to_json(metadata: pd.DataFrame, output_json: Union[PathLike, st
             metadata.iterrows(),
             f'{output_file_prefix}.{output_file_suffix}'
         )
+
+
+def metasra_output_json_to_dataframe(output_json: Union[PathLike, str]) -> pd.DataFrame:
+    """
+    """
+    import json
+    with open(output_json, 'r') as f:
+        mappings = json.load(f)
+
+    metasra_data = []
+    for accession, mapping in mappings.items():
+        sample_type = mapping['sample type']
+        sample_type_confidence = mapping['sample-type confidence']
+        mapped_ontology_terms, mapped_ontology_ids = [], []
+        for term in mapping['mapped ontology terms']:
+            term_id, term_name = term.split('|')
+            mapped_ontology_terms.append(term_name)
+            mapped_ontology_ids.append(term_id)
+        
+        metasra_data.append(
+            [
+                accession, 
+                sample_type, 
+                sample_type_confidence, 
+                ', '.join(mapped_ontology_ids), 
+                ', '.join(mapped_ontology_terms)
+            ]
+        )
+
+    metasra_df = pd.DataFrame(
+        metasra_data, 
+        columns = [
+            'accession', 
+            'sample_type', 
+            'sample_type_confidence', 
+            'mapped_ontology_ids', 
+            'mapped_ontology_terms'
+        ]
+    )
+    return metasra_df
+        
