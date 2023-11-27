@@ -151,3 +151,27 @@ def metasra_output_json_to_dataframe(output_json: Union[PathLike, str]) -> pd.Da
     )
     return metasra_df
         
+
+def make_accession_and_attributes_table(archs4_annotated: pd.DataFrame, accesseion_column: str = 'sample') -> pd.DataFrame:
+    """
+    takes an annotated ARCHS4 metdata table as returned by metadata.merge_to_annotated_metadata
+    and extracts a given accession column and the raw BioSample attributes. removes samples
+    that do not have any attributes
+
+    :param archs4_annotated:    annotated ARCHS4 metadata table (see metadata.merge_to_annotated_metadata)
+    :param accession_column:    string denoting the column with the desired NCBI accession
+
+    :return:                    pandas.DataFrame with columns 'accession' and 'attribute'
+    """
+    accession_and_attributes = archs4_annotated_deduplicated.loc[
+        :, 
+        [accession_column, 'raw_biosample_metadata']
+    ].rename(
+        columns = {
+            accession_column: 'accession',
+            'raw_biosample_metadata': 'attribute'
+        }
+    ).dropna()
+
+    return accession_and_attributes 
+    
