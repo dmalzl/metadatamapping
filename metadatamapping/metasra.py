@@ -6,6 +6,7 @@ import pandas as pd
 import itertools as it
 
 from typing import Iterable, Union
+from . import metadatautils
 from os import PathLike
 
 def study_id_to_metasra(study_ids: Iterable[str]) -> pd.DataFrame:
@@ -50,13 +51,13 @@ def convert_attributes_to_dict(attributes: str) -> dict[str, str]:
     """
     converts the attributes string into an attributes dictionary
 
-    :param attributes:  string of key-value pairs of the format key1: value1; key2: value2; ...
+    :param attributes:  string of key-value pairs of the format key1:value1;key2:value2; ...
 
     :return:            dictionary of attributes with key as key and value as value
     """
     attribute_dict = dict()
-    for kv_pair in attributes.split('; '):
-        k, v = kv_pair.split(': ')
+    for kv_pair in attributes.split(';'):
+        k, v = kv_pair.split(':')
         attribute_dict[k] = v
     
     return attribute_dict
@@ -172,5 +173,10 @@ def make_accession_and_attributes_table(archs4_annotated: pd.DataFrame, accessio
             'raw_biosample_metadata': 'attribute'
         }
     ).dropna()
+
+    # remove non-ascii characters because metasra seems to fail on them
+    accession_and_attributes.loc[:, 'attribute'] = accession_and_attributes.attribute.apply(
+        metadatautils.normalize_string
+    )
 
     return accession_and_attributes 
