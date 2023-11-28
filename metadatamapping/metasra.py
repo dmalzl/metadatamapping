@@ -56,8 +56,8 @@ def convert_attributes_to_dict(attributes: str) -> dict[str, str]:
     :return:            dictionary of attributes with key as key and value as value
     """
     attribute_dict = dict()
-    for kv_pair in attributes.split(';'):
-        k, v = kv_pair.split(':')
+    for kv_pair in attributes.split('; '):
+        k, v = kv_pair.split(': ')
         attribute_dict[k] = v
     
     return attribute_dict
@@ -176,7 +176,8 @@ def make_accession_and_attributes_table(archs4_annotated: pd.DataFrame, accessio
 
     # remove non-ascii characters because metasra seems to fail on them
     accession_and_attributes.loc[:, 'attribute'] = accession_and_attributes.attribute.apply(
-        metadatautils.normalize_string
+        metadatautils.normalize_string,
+        extra_chars_to_remove = ''
     )
 
     return accession_and_attributes 
