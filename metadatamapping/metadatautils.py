@@ -1,4 +1,21 @@
 import pandas as pd
+from unidecode import unidecode
+
+
+def remove_whitespace(string: str) -> str:
+    """
+    removes whitespace from string
+
+    :param string:      string object from which to remove whitespaces
+
+    :return:            string without whitespace
+    """
+    no_whitespace_string = []
+    for char in string:
+        if char != ' ':
+            no_whitespace_string.append(char)
+    
+    return ''.join(no_whitespace_string)
 
 
 def normalize_string(string: str, extra_chars_to_remove = ' ') -> str:
@@ -25,5 +42,5 @@ def all_equal(x: pd.Series) -> bool:
 
     :return:        True if all items are the same else False
     """
-    ref = normalize_string(x.iloc[0])
+    ref = unidecode(remove_whitespace(ref))
     return all(normalize_string(item) == ref for _, item in x.items())
