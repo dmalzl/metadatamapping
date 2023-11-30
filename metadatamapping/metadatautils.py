@@ -42,5 +42,5 @@ def all_equal(x: pd.Series) -> bool:
 
     :return:        True if all items are the same else False
     """
-    ref = unidecode(remove_whitespace(ref))
-    return all(normalize_string(item) == ref for _, item in x.items())
+    ref = unidecode(remove_whitespace(x.iloc[0]))
+    return all(unidecode(remove_whitespace(item)) == ref for _, item in x.items())
