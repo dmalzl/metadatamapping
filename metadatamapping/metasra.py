@@ -6,8 +6,8 @@ import pandas as pd
 import itertools as it
 
 from typing import Iterable, Union
-from . import metadatautils
 from os import PathLike
+from unidecode import unidecode
 
 def study_id_to_metasra(study_ids: Iterable[str]) -> pd.DataFrame:
     """
@@ -174,10 +174,9 @@ def make_accession_and_attributes_table(archs4_annotated: pd.DataFrame, accessio
         }
     ).dropna()
 
-    # remove non-ascii characters because metasra seems to fail on them
+    # map unicode characters to ascii
     accession_and_attributes.loc[:, 'attribute'] = accession_and_attributes.attribute.apply(
-        metadatautils.normalize_string,
-        extra_chars_to_remove = ''
+        unidecode
     )
 
-    return accession_and_attributes 
+    return accession_and_attributes.drop_duplicates()

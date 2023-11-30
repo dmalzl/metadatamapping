@@ -18,22 +18,6 @@ def remove_whitespace(string: str) -> str:
     return ''.join(no_whitespace_string)
 
 
-def normalize_string(string: str, extra_chars_to_remove = ' ') -> str:
-    """
-    removes non ascii characters from a given string
-
-    :param string:      string from which to remove non ascii characters
-
-    :return:            string with just ascii characters
-    """
-    normalized_string = []
-    for char in string:
-        if ord(char) < 128 and not char in extra_chars_to_remove:
-            normalized_string.append(char)
-    
-    return ''.join(normalized_string)
-
-
 def all_equal(x: pd.Series) -> bool:
     """
     checks if all items in a pandas.Series are the same
