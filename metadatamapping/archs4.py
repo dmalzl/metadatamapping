@@ -184,8 +184,13 @@ def index(file, sample_idx, gene_idx = [], silent=False, n_processes = 1):
         gene_idx = gene_idx
     )
 
+    sparse_exp = scipy.sparse.vstack(data)
+
+    del data
+    gc.collect()
+
     exp = ad.AnnData(
-        X = scipy.sparse.vstack(data),
+        X = sparse_exp,
         var = pd.DataFrame(index = genes[gene_idx]),
         obs = pd.DataFrame(index = gsm_ids)
     )
