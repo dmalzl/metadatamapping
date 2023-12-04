@@ -8,6 +8,8 @@ import itertools as it
 from typing import Iterable, Union
 from os import PathLike
 from unidecode import unidecode
+from . import obo
+
 
 def study_id_to_metasra(study_ids: Iterable[str]) -> pd.DataFrame:
     """
@@ -113,10 +115,9 @@ def raw_metadata_to_json(metadata: pd.DataFrame, output_json: Union[PathLike, st
         )
 
 
-def metasra_output_json_to_dataframe(output_json: Union[PathLike, str]) -> pd.DataFrame:
+def metasra_output_json_to_dataframe(output_json: Union[PathLike, str], ontologies: list[dict]) -> pd.DataFrame:
     """
     """
-    import json
     with open(output_json, 'r') as f:
         mappings = json.load(f)
 
@@ -129,6 +130,25 @@ def metasra_output_json_to_dataframe(output_json: Union[PathLike, str]) -> pd.Da
             term_id, term_name = term.split('|')
             mapped_ontology_terms.append(term_name)
             mapped_ontology_ids.append(term_id)
+
+        real_value_ids, real_value_terms = [], []
+        for real_value_property in mapping['real-value properties']:
+            property_id = real_value_property['property_id']
+            property_unit_id = real_value_property['unit_id']
+            property_value = real_value_property['value']
+
+            property_term = obo.map_id_to_term(property_id, ontologies)
+            property_unit_term = (
+                'missing' if unit_id == 'missing' 
+                else obo.map_id_to_term(property_unit_id, ontologies)
+            )
+            real_value_ids.append(
+                f'{property_id}: {property_value}[{property_unit_id}]'
+            )
+            real_value_terms.append(
+                f'{property_term}: {property_value}[{property_unit_term}]'
+            )
+
         
         metasra_data.append(
             [
@@ -136,7 +156,9 @@ def metasra_output_json_to_dataframe(output_json: Union[PathLike, str]) -> pd.Da
                 sample_type, 
                 sample_type_confidence, 
                 ', '.join(mapped_ontology_ids), 
-                ', '.join(mapped_ontology_terms)
+                ', '.join(mapped_ontology_terms),
+                ', '.join(real_value_ids),
+                ', '.join(real_value_terms)
             ]
         )
 
@@ -147,7 +169,9 @@ def metasra_output_json_to_dataframe(output_json: Union[PathLike, str]) -> pd.Da
             'sample_type', 
             'sample_type_confidence', 
             'mapped_ontology_ids', 
-            'mapped_ontology_terms'
+            'mapped_ontology_terms',
+            'real_value_property_ids',
+            'real_value_property_terms'
         ]
     )
     return metasra_df
