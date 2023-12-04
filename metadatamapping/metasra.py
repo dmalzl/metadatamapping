@@ -140,6 +140,19 @@ def parse_real_value_property(real_value_property: dict[str, str], ontologies: l
 
 def metasra_output_json_to_dataframe(output_json: Union[PathLike, str], ontologies: list[dict[str, str]]) -> pd.DataFrame:
     """
+    parses the output of MetaSRA into a pandas.DataFrame
+
+    :param output_json:     string denoting the path to the output JSON file to parse
+    :param ontologies:      list of it_to_term mappings used for mapping real value property ids to terms
+
+    :return:                pandas.DataFrame containing the output in the following columns 
+                            'accession', 
+                            'sample_type', 
+                            'sample_type_confidence', 
+                            'mapped_ontology_ids', 
+                            'mapped_ontology_terms',
+                            'real_value_property_ids',
+                            'real_value_property_terms'
     """
     with open(output_json, 'r') as f:
         mappings = json.load(f)

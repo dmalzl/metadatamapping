@@ -235,3 +235,45 @@ def merge_to_annotated_metadata_frame(
         ]
     )
     return archs4_annotated_deduplicated.reset_index(drop = True)
+
+
+def annotated_with_metasra_and_treatment(annotated_frame: pd.DataFrame, metasra_frame: pd.DataFrame) -> pd.DataFrame:
+    """
+    merges the annotated DataFrame returned by 'merge_to_annotated_metadata_frame' with the normalized metadata DataFrame
+    produced by MetaSRA and as returned by 'metasra.metasra_output_json_to_dataframe'. Additionally, the function also 
+    attempts to parse out any treatment information from the raw metadata which is usually not kept by metasra into a
+    new column 'treatment'. This includes any raw metadata property that starts with 'treat', 'transfect' or 'transduc'.
+    Note that resulting matches are normalized by replacing the first word in the match with either 'treatment', 'transfection'
+    or 'transduction' respectively. This is a crude attempt to remove any spelling mistakes.
+
+    :param annotated_frame:     pandas.DataFrame as returned by 'merge_to_annotated_metadata_frame'
+    :param metasra_frame:       pandas.DataFrame as returned by 'metasra.metasra_output_json_to_dataframe'
+
+    :return:                    merged pandas.DataFrame containing an additional new column 'treatment'
+    """
+    sample_accessions = annotated_frame.loc[:, ['sample', 'geo']]
+    metasra_accession_annotated = metasra_frame.merge(
+        sample_accessions.rename(columns = {'sample': 'accession'}),
+        on = 'accession',
+        how = 'inner'
+    )
+    metasra_accession_annotated.drop_duplicates(inplace = True)
+
+    metasra_annotated = metasra_accession_annotated.merge(
+        annotated_frame.rename(
+            columns = {
+                'geo_accession': 'geo',
+                'title': 'geo_title',
+                'source_name_ch1': 'geo_source_name',
+                'characteristics_ch1': 'geo_metadata'
+            }
+        ),
+        on = 'geo',
+        how = 'inner'
+    )
+
+    metasra_annotated['treatment'] = metadatautils.map_treatment(
+        metasra_annotated.raw_biosample_metadata
+    )
+
+    return metasra_annotated
