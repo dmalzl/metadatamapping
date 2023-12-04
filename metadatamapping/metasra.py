@@ -115,7 +115,30 @@ def raw_metadata_to_json(metadata: pd.DataFrame, output_json: Union[PathLike, st
         )
 
 
-def metasra_output_json_to_dataframe(output_json: Union[PathLike, str], ontologies: list[dict]) -> pd.DataFrame:
+def parse_real_value_property(real_value_property: dict[str, str], ontologies: list[dict[str, str]]) -> tuple[str, str]:
+    """
+    parses the given real value property dictionary and returns
+    two string representation one for the contained IDs and one
+    for the corresponding terms
+
+    :param real_value_property:     dictionary containing keys 'property_id', 'unit_id' and 'value'
+    :param ontologies:              list of dictionaries containing id to term mapping for all ontologies used
+
+    :return:                        string representation of real value property with ontology ids and ontology terms
+    """
+    property_id = real_value_property['property_id']
+    property_unit_id = real_value_property['unit_id']
+    property_value = real_value_property['value']
+
+    property_term = obo.map_id_to_term(property_id, ontologies)
+    property_unit_term = (
+        'missing' if property_unit_id == 'missing' 
+        else obo.map_id_to_term(property_unit_id, ontologies)
+    )
+    return f'{property_id}: {property_value}[{property_unit_id}]', f'{property_term}: {property_value}[{property_unit_term}]'
+
+
+def metasra_output_json_to_dataframe(output_json: Union[PathLike, str], ontologies: list[dict[str, str]]) -> pd.DataFrame:
     """
     """
     with open(output_json, 'r') as f:
@@ -133,23 +156,13 @@ def metasra_output_json_to_dataframe(output_json: Union[PathLike, str], ontologi
 
         real_value_ids, real_value_terms = [], []
         for real_value_property in mapping['real-value properties']:
-            property_id = real_value_property['property_id']
-            property_unit_id = real_value_property['unit_id']
-            property_value = real_value_property['value']
+            real_value_id, real_value_term = parse_real_value_property(
+                real_value_property,
+                ontologies
+            )
+            real_value_ids.append(real_value_id)
+            real_value_terms.append(real_value_term)
 
-            property_term = obo.map_id_to_term(property_id, ontologies)
-            property_unit_term = (
-                'missing' if unit_id == 'missing' 
-                else obo.map_id_to_term(property_unit_id, ontologies)
-            )
-            real_value_ids.append(
-                f'{property_id}: {property_value}[{property_unit_id}]'
-            )
-            real_value_terms.append(
-                f'{property_term}: {property_value}[{property_unit_term}]'
-            )
-
-        
         metasra_data.append(
             [
                 accession, 
