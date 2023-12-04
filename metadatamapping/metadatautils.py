@@ -102,7 +102,7 @@ def map_treatment(raw_sample_metadata: Iterable[str]) -> list[str]:
     for raw_metadata in raw_sample_metadata:
         raw_metadata_items = raw_metadata.split('; ')
         mapped_treatments.append(
-            extract_treatment(raw_metadata_items)
+            extract_treatment(raw_metadata_items, term_matchers)
         )
             
     return mapped_treatments
