@@ -185,6 +185,7 @@ def index(file, sample_idx, gene_idx = [], silent=False, n_processes = 1):
     )
 
     sparse_exp = scipy.sparse.vstack(data, dtype = np.uint32)
+    sparse_exp.eliminate_zeros()
 
     del data
     gc.collect()
@@ -195,7 +196,6 @@ def index(file, sample_idx, gene_idx = [], silent=False, n_processes = 1):
         obs = pd.DataFrame(index = gsm_ids)
     )
     exp.var_names_make_unique()
-    exp.eliminate_zeros()
     return exp
 
 
@@ -230,7 +230,7 @@ def get_encoding(file):
 def read_sample_data(file, idx, gsm, gene_idx):
     with h5py.File(file, "r") as f:
         dense_expression = f["data/expression"][:, idx][gene_idx, :]
-        sparse_expression = scipy.sparse.csr_matrix(dense_expression.T)
+        sparse_expression = scipy.sparse.csr_matrix(dense_expression.T, dtype = np.uint32)
         sparse_expression.eliminate_zeros()
 
         del dense_expression
@@ -248,7 +248,7 @@ def get_samples(sample_idx_gsms, file, gene_idx, **kwargs):
         read_sample_data(file, consecutive_idx, consecutive_gsm, gene_idx) 
         for consecutive_idx, consecutive_gsm in zip(*consecutive(sample_idxs, sample_gsms))
     ]
-    return scipy.sparse.vstack(data)
+    return scipy.sparse.vstack(data, dtype = np.uint32)
 
 
 def samples(file, sample_ids, silent=False, n_processes = 1):
