@@ -184,7 +184,7 @@ def index(file, sample_idx, gene_idx = [], silent=False, n_processes = 1):
         gene_idx = gene_idx
     )
 
-    sparse_exp = scipy.sparse.vstack(data)
+    sparse_exp = scipy.sparse.vstack(data, dtype = np.uint32)
 
     del data
     gc.collect()
