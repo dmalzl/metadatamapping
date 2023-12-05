@@ -167,7 +167,7 @@ def get_gene_metadata_table(file: Union[PathLike, str]) -> pd.DataFrame:
 
     :return:            pandas.DataFrame containing the gene metadata
     """
-    with h5py.File(file, 'r') as h5:
+    with h5py.File(file, 'r') as f:
         if "genes" in list(f["meta"].keys()):
             table_key = 'genes'
 
