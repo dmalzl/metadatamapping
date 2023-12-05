@@ -172,16 +172,14 @@ def get_gene_metadata_table(file: Union[PathLike, str]) -> pd.DataFrame:
             table_key = 'genes'
 
         elif "transcripts" in list(f["meta"].keys()):
-            table_keys = 'meta/transcripts'
+            table_key = 'meta/transcripts'
             
         else:
             raise Exception("error in gene/transcript meta data")
         
-    
-    
-    gene_metadata = {}
-    for key in h5['meta'][table_key].keys():
-        gene_metadata[key] = [x.decode('utf-8') for x in h5['meta'][table_key][key]]
+        gene_metadata = {}
+        for key in f['meta'][table_key].keys():
+            gene_metadata[key] = [x.decode('utf-8') for x in f['meta'][table_key][key]]
 
     gene_metadata = pd.DataFrame(gene_metadata)
     gene_metadata.index = ad.utils.make_index_unique(gene_metadata.symbol)
