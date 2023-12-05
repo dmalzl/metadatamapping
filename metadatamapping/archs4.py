@@ -8,6 +8,7 @@ import anndata as ad
 
 from os import PathLike
 from . import concurrency
+from . import sparse
 from typing import Union, Iterable, Any
 
 
@@ -151,22 +152,24 @@ def get_filtered_sample_metadata(archs4_file: Union[str, PathLike], keys_to_reta
 
 
 # adapted from archs4py as this would not install due to issues with Python 3.12 and numpy requirement
-def index(file, sample_idx, gene_idx = [], silent=False, n_processes = 1):
+def load_data(
+    file: Union[PathLike, str], 
+    sample_idx: Iterable[int], 
+    gene_idx: Iterable[int] = [], 
+    n_processes: int = 1
+) -> ad.AnnData:
     """
     Retrieve gene expression data from a specified file for the given sample and gene indices.
 
-    Args:
-        file (str): The file path or object containing the data.
-        sample_idx (list): A list of sample indices to retrieve expression data for.
-        gene_idx (list, optional): A list of gene indices to retrieve expression data for. Defaults to an empty list (return all).
-        silent (bool, optional): Whether to disable progress bar. Defaults to False.
+    :param file:            the file path or object containing the data.
+    :param sample_idx:      a list of sample indices to retrieve expression data for.
+    :param gene_idx:        a list of gene indices to retrieve expression data for. Defaults to an empty list (return all).
 
-    Returns:
-        pd.DataFrame: A pandas DataFrame containing the gene expression data.
+    :return:                AnnData object containing the expression data
     """
     sample_idx = sorted(sample_idx)
     gene_idx = sorted(gene_idx)
-    row_encoding = get_encoding(file)
+    row_encoding = get_gene_name_column(file)
     with h5py.File(file, "r") as f:
         genes = np.array([x.decode("UTF-8") for x in np.array(f[row_encoding])])
         if len(sample_idx) == 0:
@@ -178,13 +181,17 @@ def index(file, sample_idx, gene_idx = [], silent=False, n_processes = 1):
 
     data = concurrency.process_data_in_chunks(
         zip(sample_idx, gsm_ids),
-        get_samples,
-        n_processes=n_processes,
+        load_samples_in_consecutive_blocks,
+        n_processes = n_processes,
         file = file,
         gene_idx = gene_idx
     )
 
-    sparse_exp = scipy.sparse.vstack(data, dtype = np.uint32)
+    # scipy.sparse.vstack uses a lot of memory when concatenating the data chunks
+    # estimated to double/triple the size of the originally loaded data
+    # therefore we use an optimized version of it that is only supposed to concatenate
+    # csr_matrices
+    sparse_exp = sparse.bmat(data)
     sparse_exp.eliminate_zeros()
 
     del data
@@ -200,20 +207,31 @@ def index(file, sample_idx, gene_idx = [], silent=False, n_processes = 1):
 
 
 def consecutive(
-    sequence_array: np.ndarray, 
-    *additional_arrays_to_split: np.ndarray,  
-    stepsize: int = 1
-) -> list[np.ndarray]:
+    sequence_array: np.ndarray[int], 
+    *additional_arrays_to_split: np.ndarray[Any]
+) -> list[tuple(np.ndarray)]:
     """
     finds all sequences of consecutive elements in a numpy array
     and splits the input arrays accordingly
+
+    :param sequence_array:                  numpy.ndarray containig a sequence of integers
+    :param *additional_arrays_to_split:     any number of additional arrays to split into same chunks as sequence array
+
+    :return:                                list of tuples of chunks of sequence_array and additional arrays            
     """
-    split_idx = np.where(np.diff(sequence_array) != stepsize)[0]+1
+    split_idx = np.where(np.diff(sequence_array) != 1)[0]+1
     arrays = [sequence_array, *additional_arrays_to_split]
     return [np.split(array, split_idx) for array in arrays]
 
 
-def get_encoding(file):
+def get_gene_name_column(file: Union[PathLike, str]) -> str:
+    """
+    detect the conatined gene/transcript names and return corresponding h5 path
+
+    :param file:        string denoting the path to the ARCHS4 file
+
+    :return:            string giving the h5 path to gene/transcript names
+    """
     with h5py.File(file) as f:
         if "genes" in list(f["meta"].keys()):
             if "gene_symbol" in list(f["meta/genes"].keys()):
@@ -227,10 +245,23 @@ def get_encoding(file):
             raise Exception("error in gene/transcript meta data")
 
 
-def read_sample_data(file, idx, gsm, gene_idx):
+def read_sample_data(
+    file: Union[PathLike, str], 
+    sample_idx: Iterable[int], 
+    gene_idx: Iterable[int]
+) -> scipy.sparse.csr_matrix:
+    """
+    reads a given block of consecutive samples from the ARCHS4 file
+
+    :param file:                string denoting the path to the ARCHS4 file
+    :param sample_idx:          iterable of integers denoting the samples to load from file
+    :param gene_idx:            iterable of integers containing the indexes of genes to retain
+
+    :return:                    scipy.sparse.csr_matrix containing the loaded expression data
+    """
     with h5py.File(file, "r") as f:
-        dense_expression = f["data/expression"][:, idx][gene_idx, :]
-        sparse_expression = scipy.sparse.csr_matrix(dense_expression.T, dtype = np.uint32)
+        dense_expression = f["data/expression"][:, sample_idx][gene_idx, :]
+        sparse_expression = scipy.sparse.csr_matrix(dense_expression.T)
         sparse_expression.eliminate_zeros()
 
         del dense_expression
@@ -240,15 +271,31 @@ def read_sample_data(file, idx, gsm, gene_idx):
     
 
 # this is a wrapper to ensure compliance with API
-def get_samples(sample_idx_gsms, file, gene_idx, **kwargs):
+def load_samples_in_consecutive_blocks(
+    sample_idx_gsms: Iterable[tuple[int, str]], 
+    file: Union[PathLike, str], 
+    gene_idx: Iterable[int], 
+    **kwargs
+) -> ad.AnnData:
+    """
+    load the data in consecutive blocks of samples to minimize IO
+
+    :param sample_idx_gsms:     iterable of tuples containing the index of the sample and its accession
+    :param file:                string denoting the path to the ARCHS4 file
+    :param gene_idx:            iterable of integers containing the indexes of genes to retain
+    :param **kwargs:            Any other keyword arguments. This does not have an effect but is just to comply to
+                                'process_data_in_chunks' API
+
+    :return:                    AnnData object containing the data
+    """
     sample_idxs = np.array([item[0] for item in sample_idx_gsms])
     sample_gsms = np.array([item[1] for item in sample_idx_gsms])
         
     data = [
-        read_sample_data(file, consecutive_idx, consecutive_gsm, gene_idx) 
-        for consecutive_idx, consecutive_gsm in zip(*consecutive(sample_idxs, sample_gsms))
+        read_sample_data(file, consecutive_idx, gene_idx) 
+        for consecutive_idx, _ in zip(*consecutive(sample_idxs, sample_gsms))
     ]
-    return scipy.sparse.vstack(data, dtype = np.uint32)
+    return sparse.bmat(data)
 
 
 def samples(file, sample_ids, silent=False, n_processes = 1):
@@ -258,5 +305,5 @@ def samples(file, sample_ids, silent=False, n_processes = 1):
 
     idx = [i for i,x in enumerate(samples) if x in sample_ids]
     if len(idx) > 0:
-        return index(file, idx, silent=silent, n_processes=n_processes)
+        return load_data(file, idx, n_processes=n_processes)
     
