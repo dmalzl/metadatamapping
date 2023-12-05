@@ -4,7 +4,8 @@ import numpy as np
 
 from scipy.sparse import csr_matrix, csc_matrix
 
-
+# code in this file is a copy of code in scipy.sparse._construct
+# somewhat memoy optimized for concatenating csr_matrices
 def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     """
     Based on input (integer) arrays `a`, determine a suitable index data

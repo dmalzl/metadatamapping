@@ -209,7 +209,7 @@ def load_data(
 def consecutive(
     sequence_array: np.ndarray[int], 
     *additional_arrays_to_split: np.ndarray[Any]
-) -> list[tuple(np.ndarray)]:
+) -> list[tuple[np.ndarray]]:
     """
     finds all sequences of consecutive elements in a numpy array
     and splits the input arrays accordingly
