@@ -299,7 +299,7 @@ def read_sample_data(
 
 # this is a wrapper to ensure compliance with API
 def load_samples_in_consecutive_blocks(
-    sample_idx_gsms: Iterable[tuple[int, str]], 
+    sample_idx: Iterable[int], 
     file: Union[PathLike, str], 
     gene_idx: Iterable[int], 
     **kwargs
@@ -314,13 +314,10 @@ def load_samples_in_consecutive_blocks(
                                 'process_data_in_chunks' API
 
     :return:                    scipy.sparse.csr_matrix containing expression data
-    """
-    sample_idxs = np.array([item[0] for item in sample_idx_gsms])
-    sample_gsms = np.array([item[1] for item in sample_idx_gsms])
-        
+    """ 
     data = [
         read_sample_data(file, consecutive_idx, gene_idx) 
-        for consecutive_idx, _ in zip(*consecutive(sample_idxs, sample_gsms))
+        for consecutive_idx in consecutive(sample_idx)[0]
     ]
     return sparse.bmat(data)
 
@@ -351,7 +348,7 @@ def samples(
             raise ValueError('No samples selected. Make sure to use valid GSM accessions!')
         
         gsm_ids = np.array([x.decode("UTF-8") for x in np.array(f["meta/samples/geo_accession"])])[sample_idx]
-        
+
     sparse_expression, gene_metadata = load_data(file, sample_idx, n_processes=n_processes)
 
     logging.info('generating AnnData object')
