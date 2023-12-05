@@ -2,11 +2,16 @@ import gc
 
 import numpy as np
 
-from scipy.sparse import csr_matrix, csc_matrix
+from scipy.sparse import csr_matrix 
+from typing import Union, Iterable
 
 # code in this file is a copy of code in scipy.sparse._construct
 # somewhat memoy optimized for concatenating csr_matrices
-def get_index_dtype(arrays=(), maxval=None, check_contents=False):
+def get_index_dtype(
+    arrays: Iterable[np.ndarray] = (), 
+    maxval: Union[float, None] = None, 
+    check_contents: bool = False
+) -> Union[np.int32, np.int64]:
     """
     Based on input (integer) arrays `a`, determine a suitable index data
     type that can hold the data in the arrays.
@@ -61,16 +66,18 @@ def get_index_dtype(arrays=(), maxval=None, check_contents=False):
     return dtype
 
 
-def _compressed_sparse_stack(blocks, axis):
+def _compressed_sparse_csr_stack(blocks: list[csr_matrix]) -> csr_matrix:
     """
-    Stacking fast path for CSR/CSC matrices
-    (i) vstack for CSR, (ii) hstack for CSC.
+    Stacking fast path for vstack for CSR
     """
-    other_axis = 1 if axis == 0 else 0
+    axis = 0
+    other_axis = 1
     data = np.concatenate([b.data for b in blocks])
     constant_dim = blocks[0].shape[other_axis]
-    idx_dtype = get_index_dtype(arrays=[b.indptr for b in blocks],
-                                maxval=max(data.size, constant_dim))
+    idx_dtype = get_index_dtype(
+        arrays = [b.indptr for b in blocks],
+        maxval = max(data.size, constant_dim)
+    )
     indices = np.empty(data.size, dtype=idx_dtype)
     indptr = np.empty(sum(b.shape[axis] for b in blocks) + 1, dtype=idx_dtype)
     last_indptr = idx_dtype(0)
@@ -91,17 +98,12 @@ def _compressed_sparse_stack(blocks, axis):
     gc.collect()
 
     indptr[-1] = last_indptr
-    if axis == 0:
-        return csr_matrix((data, indices, indptr),
-                          shape=(sum_dim, constant_dim))
-    else:
-        return csc_matrix((data, indices, indptr),
-                          shape=(constant_dim, sum_dim))
+    return csr_matrix((data, indices, indptr), shape=(sum_dim, constant_dim))
     
 
-def bmat(matrices, dtype=None):
+def bmat(matrices: list[csr_matrix], dtype=None):
     # stack along rows (axis 0):
-    A = _compressed_sparse_stack(matrices, 0)
+    A = _compressed_sparse_csr_stack(matrices)
     if dtype is not None:
         A = A.astype(dtype)
     return A
