@@ -9,6 +9,7 @@ from typing import Iterable, Union
 from os import PathLike
 from unidecode import unidecode
 from . import obo
+from io import BytesIO
 
 
 def study_id_to_metasra(study_ids: Iterable[str]) -> pd.DataFrame:
