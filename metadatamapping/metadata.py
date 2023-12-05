@@ -1,6 +1,4 @@
 import logging
-import certifi
-import urllib3
 
 import pandas as pd
 
@@ -12,7 +10,6 @@ from . import metasra
 from . import metadatautils
 from typing import Union, Iterable
 from os import PathLike
-from io import BytesIO
 
 logging.basicConfig(
     format = '%(threadName)s: %(asctime)s-%(levelname)s-%(message)s',

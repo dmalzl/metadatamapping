@@ -1,6 +1,7 @@
 import h5py
 import gc
 import scipy
+import logging
 
 import pandas as pd
 import numpy as np
@@ -10,6 +11,13 @@ from os import PathLike
 from . import concurrency
 from . import sparse
 from typing import Union, Iterable, Any
+
+
+logging.basicConfig(
+    format = '%(threadName)s: %(asctime)s-%(levelname)s-%(message)s',
+    datefmt = '%Y-%m-%d %H:%M:%S',
+    level = logging.INFO
+)
 
 
 def parse_table(archs4_file: Union[str, PathLike], root_key: str, table_key: str) -> dict[str, Any]:
@@ -151,36 +159,65 @@ def get_filtered_sample_metadata(archs4_file: Union[str, PathLike], keys_to_reta
     return table
 
 
+def get_gene_metadata_table(file: Union[PathLike, str]) -> pd.DataFrame:
+    """
+    read gene/transcript metadata from ARCHS4 file
+
+    :param file:        string denoting the path to the ARCHS4 file
+
+    :return:            pandas.DataFrame containing the gene metadata
+    """
+    with h5py.File(file, 'r') as h5:
+        if "genes" in list(f["meta"].keys()):
+            table_key = 'genes'
+
+        elif "transcripts" in list(f["meta"].keys()):
+            table_keys = 'meta/transcripts'
+            
+        else:
+            raise Exception("error in gene/transcript meta data")
+        
+    
+    
+    gene_metadata = {}
+    for key in h5['meta'][table_key].keys():
+        gene_metadata[key] = [x.decode('utf-8') for x in h5['meta'][table_key][key]]
+
+    gene_metadata = pd.DataFrame(gene_metadata)
+    gene_metadata.index = ad.utils.make_index_unique(gene_metadata.symbol)
+    
+    return gene_metadata
+
+
 # adapted from archs4py as this would not install due to issues with Python 3.12 and numpy requirement
 def load_data(
     file: Union[PathLike, str], 
     sample_idx: Iterable[int], 
     gene_idx: Iterable[int] = [], 
     n_processes: int = 1
-) -> ad.AnnData:
+) -> tuple[scipy.sparse.csr_matrix, pd.DataFrame]:
     """
     Retrieve gene expression data from a specified file for the given sample and gene indices.
 
-    :param file:            the file path or object containing the data.
-    :param sample_idx:      a list of sample indices to retrieve expression data for.
-    :param gene_idx:        a list of gene indices to retrieve expression data for. Defaults to an empty list (return all).
+    :param file:                the file path or object containing the data.
+    :param sample_idx:          a list of sample indices to retrieve expression data for.
+    :param gene_idx:            a list of gene indices to retrieve expression data for. Defaults to an empty list (return all).
+    :param n_processes:         integer denoting the number of concurrent processes to use for data loading
 
-    :return:                AnnData object containing the expression data
+    :return:                    scipy.sparse.csr_matrix containing expression data and a pandas.DataFrame containing gene metadata
     """
     sample_idx = sorted(sample_idx)
     gene_idx = sorted(gene_idx)
-    row_encoding = get_gene_name_column(file)
+    genes_h5_path = get_gene_name_column(file)
     with h5py.File(file, "r") as f:
-        genes = np.array([x.decode("UTF-8") for x in np.array(f[row_encoding])])
-        if len(sample_idx) == 0:
-            return pd.DataFrame(index=genes[gene_idx])
-        gsm_ids = np.array([x.decode("UTF-8") for x in np.array(f["meta/samples/geo_accession"])])[sample_idx]
-
+        genes = np.array([x.decode("UTF-8") for x in np.array(f[genes_h5_path])])
+        
     if len(gene_idx) == 0:
         gene_idx = list(range(len(genes)))
 
+    logging.info(f'start loading {len(sample_idx)} samples using {n_processes} process(es)')
     data = concurrency.process_data_in_chunks(
-        zip(sample_idx, gsm_ids),
+        sample_idx,
         load_samples_in_consecutive_blocks,
         n_processes = n_processes,
         file = file,
@@ -189,21 +226,11 @@ def load_data(
 
     # scipy.sparse.vstack uses a lot of memory when concatenating the data chunks
     # estimated to double/triple the size of the originally loaded data
-    # therefore we use an optimized version of it that is only supposed to concatenate
-    # csr_matrices
-    sparse_exp = sparse.bmat(data)
-    sparse_exp.eliminate_zeros()
+    # we use an optimized version of it that is only supposed to concatenate csr_matrices
+    logging.info('concatenate matrices')
+    sparse_expression = sparse.bmat(data)
 
-    del data
-    gc.collect()
-
-    exp = ad.AnnData(
-        X = sparse_exp,
-        var = pd.DataFrame(index = genes[gene_idx]),
-        obs = pd.DataFrame(index = gsm_ids)
-    )
-    exp.var_names_make_unique()
-    return exp
+    return sparse_expression, get_gene_metadata_table(file).iloc[gene_idx, :]
 
 
 def consecutive(
@@ -276,7 +303,7 @@ def load_samples_in_consecutive_blocks(
     file: Union[PathLike, str], 
     gene_idx: Iterable[int], 
     **kwargs
-) -> ad.AnnData:
+) -> scipy.sparse.csr_matrix:
     """
     load the data in consecutive blocks of samples to minimize IO
 
@@ -286,7 +313,7 @@ def load_samples_in_consecutive_blocks(
     :param **kwargs:            Any other keyword arguments. This does not have an effect but is just to comply to
                                 'process_data_in_chunks' API
 
-    :return:                    AnnData object containing the data
+    :return:                    scipy.sparse.csr_matrix containing expression data
     """
     sample_idxs = np.array([item[0] for item in sample_idx_gsms])
     sample_gsms = np.array([item[1] for item in sample_idx_gsms])
@@ -298,12 +325,34 @@ def load_samples_in_consecutive_blocks(
     return sparse.bmat(data)
 
 
-def samples(file, sample_ids, silent=False, n_processes = 1):
-    sample_ids = set(sample_ids)
+def samples(
+    file: Union[PathLike, str], 
+    sample_metadata: pd.DataFrame,
+    n_processes: int = 1
+) -> ad.AnnData:
+    """
+    retrieve samples corresponding to sample_metadata.index from ARCHS4 and pack them
+    into an AnnData object. sample_metadata.index has to be GEO GSM accessions. This function
+    will only return data for accessions found in ARCHS4
+
+    :param file:                string denoting path to ARCHS4 file
+    :param sample_metadata:     pandas.DataFrame indexed by GEO GSM accessions containing additional data
+                                a subset of this will be saved to the obs of the generated AnnData object
+    :param n_processes:         number of processes to use for loading the data from ARCHS4
+
+    :return:                    AnnData containing expression and metadata of all GSM accessions contained in ARCHS4
+    """
+    sample_ids = set(sample_metadata.index)
     with h5py.File(file, "r") as f:
         samples = [x.decode("UTF-8") for x in np.array(f["meta/samples/geo_accession"])]
 
-    idx = [i for i,x in enumerate(samples) if x in sample_ids]
-    if len(idx) > 0:
-        return load_data(file, idx, n_processes=n_processes)
+    sample_idx = [i for i,x in enumerate(samples) if x in sample_ids]
+    if len(sample_idx) == 0:
+        raise ValueError('No samples selected. Make sure to use valid GSM accessions!')
+    
+    gsm_ids = np.array([x.decode("UTF-8") for x in np.array(f["meta/samples/geo_accession"])])[sample_idx]
+    sparse_expression, gene_metadata = load_data(file, sample_idx, n_processes=n_processes)
+
+    logging.info('generating AnnData object')
+    return ad.AnnData(X = sparse_expression, var = gene_metadata, obs = sample_metadata.loc[gsm_ids, :])
     
