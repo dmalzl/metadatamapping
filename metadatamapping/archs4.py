@@ -346,11 +346,12 @@ def samples(
     with h5py.File(file, "r") as f:
         samples = [x.decode("UTF-8") for x in np.array(f["meta/samples/geo_accession"])]
 
-    sample_idx = [i for i,x in enumerate(samples) if x in sample_ids]
-    if len(sample_idx) == 0:
-        raise ValueError('No samples selected. Make sure to use valid GSM accessions!')
-    
-    gsm_ids = np.array([x.decode("UTF-8") for x in np.array(f["meta/samples/geo_accession"])])[sample_idx]
+        sample_idx = [i for i,x in enumerate(samples) if x in sample_ids]
+        if len(sample_idx) == 0:
+            raise ValueError('No samples selected. Make sure to use valid GSM accessions!')
+        
+        gsm_ids = np.array([x.decode("UTF-8") for x in np.array(f["meta/samples/geo_accession"])])[sample_idx]
+        
     sparse_expression, gene_metadata = load_data(file, sample_idx, n_processes=n_processes)
 
     logging.info('generating AnnData object')
