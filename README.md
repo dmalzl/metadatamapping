@@ -1,7 +1,7 @@
 # metadatamapping
-![pypi](https://img.shields.io/badge/pypi-v1.1.1-blue)
+![pypi](https://img.shields.io/badge/pypi-v1.1.2-blue)
 ![python-version](https://img.shields.io/badge/Python->=3.10-blue)
-![stable-version](https://img.shields.io/badge/version-1.1.1-blue)
+![stable-version](https://img.shields.io/badge/version-1.1.2-blue)
 
 A python library to fetch metadata from NCBI and MetaSRA for a list of NCBI accessions and data extraction from ARCHS4
 
@@ -68,7 +68,7 @@ archs4_metadata = archs4.get_filtered_sample_metadata(
 )
 archs4_adata = archs4.samples(
     archs4_file,
-    list_of_geo_accessions,
+    dataframe_indexed_by_geo_accessions,
     n_processes = 2
 )
 ```

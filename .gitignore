@@ -1,3 +1,4 @@
 build/
 dist/
 metadatamapping.egg-info/
+.DS_store
