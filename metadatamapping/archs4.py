@@ -226,9 +226,7 @@ def load_data(
     # estimated to double/triple the size of the originally loaded data
     # we use an optimized version of it that is only supposed to concatenate csr_matrices
     logging.info('concatenate matrices')
-    sparse_expression = sparse.bmat(data)
-
-    return sparse_expression, get_gene_metadata_table(file).iloc[gene_idx, :]
+    return sparse.bmat(data), get_gene_metadata_table(file).iloc[gene_idx, :]
 
 
 def consecutive(
