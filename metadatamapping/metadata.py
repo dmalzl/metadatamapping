@@ -42,7 +42,7 @@ def map_accessions_to_srauids(
     
     concurrency.process_data_in_chunks(
         mapping_table.iterrows(),
-        dbutils.map_accessions_to_uids,
+        summary.map_accessions_to_uids,
         db = 'sra',
         outfilename = outfilename
     )

@@ -4,7 +4,6 @@ import logging
 import http
 
 import itertools as it
-import pandas as pd
 
 from Bio import Entrez
 from typing import Callable, Any, Union, Iterable
