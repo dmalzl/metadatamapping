@@ -55,6 +55,19 @@ metasra_metadata = metadata.metasra_from_study_id(
     ncbi_accessions.study.unique()
 )
 ```
+While most of the biosample metadata is also found in GEO entries some of the metadata provided in GEO (e.g. treatment protocol) is GEO exclusive but may contain vital information. Because this data is not retrievable from the Entrez API, we adopted a similar approach to [`geofetch`](https://github.com/pepkit/geofetch) and download the data from the GEO FTP. The `metadatamapping.geo` module contains everything needed for this. An example usage would be as follows:
+```python
+from metadatamapping import geo
+geo_accessions = [
+    ('GSM2791352', 'GSE104174'),
+    ('GSM2771062', 'GSE103424'),
+    ('GSM6271252', 'GSE207049'),
+    ('GSM4329764', 'GSE145668,GSE145669'),
+    ('GSM5064568', 'GSE166148,GSE166150')
+]
+
+geo_metadata = geo.geo_metadata(geo_accessions)
+```
 Additionally, the package provides an interface for parsing the [ARCHS4 HDF5 format](https://maayanlab.cloud/archs4/help.html) which is located in the `archs4` module and handles parsing of associated metadata with the `get_filtered_sample_metadata` function as well as extraction of expression data in the [`AnnData`](https://anndata.readthedocs.io/en/latest/generated/anndata.AnnData.html) format with the `samples` function
 ```python
 archs4_file = "/path/to/archs4.h5"
