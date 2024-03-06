@@ -1,7 +1,7 @@
 # metadatamapping
 ![pypi](https://img.shields.io/badge/pypi-v1.2.0-blue)
 ![python-version](https://img.shields.io/badge/Python->=3.10-blue)
-![stable-version](https://img.shields.io/badge/version-1.1.3-blue)
+![stable-version](https://img.shields.io/badge/version-1.2.0-blue)
 
 A python library to fetch metadata from NCBI and MetaSRA for a list of NCBI accessions and data extraction from ARCHS4
 
