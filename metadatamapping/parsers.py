@@ -1,10 +1,18 @@
 import re
+import datetime
+import os
 
 import pandas as pd
 
 from xml.etree import ElementTree
 from typing import Any, Union, Callable
 from os import PathLike
+
+
+MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+MONTH_TO_INT = {
+    month_str: i for i, month_str in enumerate(MONTHS, 1)
+}
 
 
 def node_parser(node: ElementTree.Element, parse_func: Callable, match_string: str) -> tuple[bool, dict[str, str]]:
@@ -275,3 +283,90 @@ def get_not_yet_mapped(table: pd.DataFrame, outfilename: Union[PathLike, str]) -
             axis = 1
         )
         return table.loc[~retrieved, :]
+    
+
+def parse_soft_line(line: str) -> tuple[str, str]:
+    """
+    parse line of SOFT formatted metadata
+
+    :param line:    SOFT formatted string
+
+    :return:        
+    """
+    key, value = line.split(' = ', maxsplit = 1)
+    return key[1:], value
+
+
+def to_list(item: Union[str, list]) -> list[str]:
+    if isinstance(item, list):
+        return item
+    
+    return [item]
+
+
+def parse_soft_metadata(
+    soft_metadata: list[str], 
+    retain_keys: dict[str, str] = {}
+) -> dict[str, str]: 
+    """
+    parses a list of SOFT formatted strings and returns a dictionary
+    containing the parsed information. If retain_keys is given, only retains
+    those the keys contained as keys and replaces them with value in the final
+    result (e.g. retain_keys = {'key': 'other_key'} -> result = {'other_key': <metadata>})
+
+    :param soft_metadata:   list of SOFT formatted strings
+    :param retain_keys:     dictionary containing the keys to retain as keys and
+                            the renamed key as values. result will contain renamed key
+    
+    :return:                dictionary containing the parsed metadatas
+    """
+    retain_all = True if not retain_keys else False
+    metadata_dict = {}
+    for line in soft_metadata:
+        if not line.startswith('!'):
+            continue
+            
+        key, value = parse_soft_line(line)
+        if key not in retain_keys and not retain_all:
+            continue
+        
+        if not retain_all:
+            key = retain_keys[key]
+            
+        if key in metadata_dict:
+            tmp = to_list(metadata_dict[key])
+            tmp.append(value)
+            metadata_dict[key] = tmp
+        
+        else:
+            metadata_dict[key] = value
+    
+    return metadata_dict
+
+
+def is_superseries(gse_soft: list[str]) -> bool:
+    """
+    determines if a given series is a superseries
+
+    :param gse_soft:    list of SOFT formatted strings
+
+    :return:            True if any line contains "SuperSeries" else False
+    """
+    regex = re.compile('SuperSeries')
+    for line in gse_soft:
+        if regex.search(line):
+            return True
+    
+    return False
+
+
+def to_date(date: str) -> datetime.date:
+    """
+    convert date string to date object for easier comparison
+
+    :param date:    string containing the date
+
+    :return:        date as datetime.date object
+    """
+    month, day, year = date.split()
+    return datetime.date(int(year), MONTH_TO_INT[month], int(day))

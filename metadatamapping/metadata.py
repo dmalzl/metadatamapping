@@ -44,7 +44,9 @@ def map_accessions_to_srauids(
         mapping_table.iterrows(),
         summary.map_accessions_to_uids,
         db = 'sra',
-        outfilename = outfilename
+        outfilename = outfilename,
+        n_processes = n_processes,
+        chunksize = chunksize
     )
 
 
