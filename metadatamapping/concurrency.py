@@ -55,7 +55,7 @@ def multiprocess_map(
     n_processes: int, 
     function_writes_file: bool,
     **kwargs
-) -> Any:
+) -> list[Any]:
     """
     takes an iterable containing chunks of a whole and a function to process these chunks and uses n_processes to do it
     
@@ -65,7 +65,7 @@ def multiprocess_map(
     :param function_writes_file:    
     :param **kwargs:                any keyword arguments to pass to func
     
-    :return:                        anything that is returned by `func`
+    :return:                        list of anything that is returned by `func`
     """
     with mp.Pool(n_processes) as p:
         if function_writes_file:
@@ -89,7 +89,7 @@ def multiprocess_map(
     return results
     
             
-def singleprocess_map(chunks: Iterable, func: Callable, **kwargs) -> list(Any):
+def singleprocess_map(chunks: Iterable, func: Callable, **kwargs) -> list[Any]:
     """
     processes chunks with func using map. single threaded equivalent to multiprocess_map
     
@@ -97,7 +97,7 @@ def singleprocess_map(chunks: Iterable, func: Callable, **kwargs) -> list(Any):
     :param func:          function to process the chunks with
     :param **kwargs:      any keyword arguments to pass to func
     
-    :return:              anything that is returned by `func`
+    :return:              list of anything that is returned by `func`
     """
     map_function = partial(func, **kwargs)
     
@@ -113,7 +113,7 @@ def process_data_in_chunks(
     n_processes: int = 1, 
     function_writes_file: bool = True,
     **kwargs
-) -> Any:
+) -> list[Any]:
     """
     uses func to process the given iterable in chunks of size chunksize possibly concurrently
     
@@ -125,7 +125,7 @@ def process_data_in_chunks(
                                     (make sure to set this to False if your function does not write a file and you use the concurrent processing)
     :param **kwargs:                any keyword arguments that need to be passed to func
     
-    :return:                        anything that is returned by `func`
+    :return:                        list of anything that is returned by `func`
     """
     chunks = it.batched(
         iterable,
