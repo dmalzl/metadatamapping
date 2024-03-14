@@ -2,6 +2,7 @@ import time
 import urllib
 import logging
 import http
+from exceptions import ResponseNotOKError
 
 import itertools as it
 
@@ -78,7 +79,7 @@ def retry(func: Callable, *args, n_retries: int = 5, sleep: int = 10, **kwargs) 
     n_tries = 1
     success = False
     while not success:
-        if n_tries == n_retries:
+        if n_tries > n_retries:
             raise RuntimeError('Exceeded retries!')
             
         try:
@@ -99,7 +100,10 @@ def retry(func: Callable, *args, n_retries: int = 5, sleep: int = 10, **kwargs) 
         # sometimes happens when reading the response if so we just retry
         except http.client.IncompleteRead as e:
             n_tries = print_exception_and_increment_try(n_tries, e, sleep)
-            
+
+        # may happen when GEO FTP response is faulty
+        except ResponseNotOKError as e:
+            n_tries = print_exception_and_increment_try(n_tries, e, sleep)
         
     return result
 

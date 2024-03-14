@@ -6,6 +6,7 @@ import pandas as pd
 from . import dbutils
 from . import concurrency
 from . import parsers
+from exceptions import ResponseNotOKError
 
 
 logging.basicConfig(
@@ -14,11 +15,13 @@ logging.basicConfig(
     level = logging.INFO
 )
 
+
 # need to fetch from ftp because e utilities do not provide functionality
 # can be done directly from archs4 using gsm and gse accessions
 def fetch_soft_metadata(accession: str) -> list[str]:
     """
     fetches metadata from the GEO FTP server. Returns a (possibly) empty list
+    may throw ResponseNotOKError if metadata could not be retrieved properly
 
     :param accession:   string containing the GEO accession to fetch metadata for
 
@@ -35,7 +38,9 @@ def fetch_soft_metadata(accession: str) -> list[str]:
     
     if not response.ok:
         logging.info(f'could not retrieve {accession}')
-        return []
+        reason = response.reason
+        status_code = response.status_code
+        raise ResponseNotOKError(f'server responded with {status_code}: {reason}')
 
     response.encoding = "UTF-8"
     result_text = response.text
