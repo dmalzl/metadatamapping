@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "metadatamapping"
-version = "1.2.0"
+version = "1.2.1"
 description = "A python library to fetch metadata from NCBI and MetaSRA for a list of NCBI accessions and data extraction from ARCHS4"
 readme = "README.md"
 authors = [{ name = "Daniel Malzl", email = "daniel@menchelab.com" }]

@@ -49,22 +49,39 @@ def write_to_file_singleprocess(filename: Union[PathLike, str], uid_list: list[l
         write(outfile, uid_list)
         
 
-def multiprocess_map(chunks: Iterable, func: Callable, n_processes: int, **kwargs) -> None:
+def multiprocess_map(
+    chunks: Iterable, 
+    func: Callable, 
+    n_processes: int, 
+    function_writes_file: bool,
+    **kwargs
+) -> Any:
     """
     takes an iterable containing chunks of a whole and a function to process these chunks and uses n_processes to do it
     
-    :param chunks:        Iterable containing chunks of a whole that need to be processed concurrently
-    :param func:          function to process the chunks with
-    :param n_processes:   number of concurrent processes to use for processing
-    :param **kwargs:      any keyword arguments to pass to func
+    :param chunks:                  Iterable containing chunks of a whole that need to be processed concurrently
+    :param func:                    function to process the chunks with
+    :param n_processes:             number of concurrent processes to use for processing
+    :param function_writes_file:    
+    :param **kwargs:                any keyword arguments to pass to func
     
-    :return:              None
+    :return:                        anything that is returned by `func`
     """
     with mp.Pool(n_processes) as p:
-        # lock needs to be a managed one otherwise passing it to the pool will fail
-        filelock = mp.Manager().Lock()
+        if function_writes_file:
+            # lock needs to be a managed one otherwise passing it to the pool will fail
+            filelock = mp.Manager().Lock()
+            map_function = partial(
+                func, 
+                filelock = filelock, 
+                **kwargs
+            )
         
-        map_function = partial(func, filelock = filelock, **kwargs)
+        else:
+            map_function = partial(
+                func,
+                **kwargs
+            )
 
         # this needs to be invoked by iterating over it
         results = [result for result in p.imap(map_function, chunks)]
@@ -72,7 +89,7 @@ def multiprocess_map(chunks: Iterable, func: Callable, n_processes: int, **kwarg
     return results
     
             
-def singleprocess_map(chunks: Iterable, func: Callable, **kwargs) -> None:
+def singleprocess_map(chunks: Iterable, func: Callable, **kwargs) -> list(Any):
     """
     processes chunks with func using map. single threaded equivalent to multiprocess_map
     
@@ -80,7 +97,7 @@ def singleprocess_map(chunks: Iterable, func: Callable, **kwargs) -> None:
     :param func:          function to process the chunks with
     :param **kwargs:      any keyword arguments to pass to func
     
-    :return:              None
+    :return:              anything that is returned by `func`
     """
     map_function = partial(func, **kwargs)
     
@@ -89,17 +106,26 @@ def singleprocess_map(chunks: Iterable, func: Callable, **kwargs) -> None:
     return list(results_iterable)
 
 
-def process_data_in_chunks(iterable: Iterable, func: Callable, chunksize: int = 5000, n_processes: int = 1, **kwargs) -> Any:
+def process_data_in_chunks(
+    iterable: Iterable, 
+    func: Callable, 
+    chunksize: int = 5000, 
+    n_processes: int = 1, 
+    function_writes_file: bool = True,
+    **kwargs
+) -> Any:
     """
     uses func to process the given iterable in chunks of size chunksize possibly concurrently
     
-    :param iterable:      iterable containing the data to be processed with func
-    :param func:          function that processes the contents of iterable
-    :param chunksize:     size of the indiviually processed chunks of the input iterable
-    :param n_processes:   number of processes to use for mapping if n_processes > 1 this will be done concurrently using multiprocessing.imap
-    :param **kwargs:      any keyword arguments that need to be passed to func
+    :param iterable:                iterable containing the data to be processed with func
+    :param func:                    function that processes the contents of iterable
+    :param chunksize:               size of the indiviually processed chunks of the input iterable
+    :param n_processes:             number of processes to use for mapping if n_processes > 1 this will be done concurrently using multiprocessing.imap
+    :param function_writes_file:    if True multiplrocessing.Manager.Lock is passed to the function with the filelock keyword
+                                    (make sure to set this to False if your function does not write a file and you use the concurrent processing)
+    :param **kwargs:                any keyword arguments that need to be passed to func
     
-    :return:              anything that is returned by func
+    :return:                        anything that is returned by `func`
     """
     chunks = it.batched(
         iterable,
@@ -111,6 +137,7 @@ def process_data_in_chunks(iterable: Iterable, func: Callable, chunksize: int = 
             chunks,
             func,
             n_processes,
+            function_writes_file,
             **kwargs
         )
 

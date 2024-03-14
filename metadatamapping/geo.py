@@ -161,7 +161,8 @@ def geo_metadata(
         geo_accessions,
         fetch_geo_metadata,
         n_processes = n_processes,
-        chunksize = chunksize
+        chunksize = chunksize,
+        function_writes_file = False
     )
 
     return pd.concat(metadata_frames)
