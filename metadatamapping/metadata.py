@@ -163,7 +163,8 @@ def merge_to_annotated_metadata_frame(
     biosample_metadata: pd.DataFrame, 
     srauids_to_biosampleuids: pd.DataFrame,
     ncbi_accessions: pd.DataFrame,
-    archs4_metadata: pd.DataFrame
+    archs4_metadata: pd.DataFrame,
+    geo_metadata: pd.DataFrame
 ) -> pd.DataFrame:
     """
     combines the passed pandas.DataFrames to a fully annotated ARCHS4 metadata set
@@ -172,6 +173,7 @@ def merge_to_annotated_metadata_frame(
     :param srauids_to_biosampleuids:    pandas.DataFrame containing the linked SRA to BioSample UIDs (see link.link_sra_to_biosample)
     :param ncbi_accessions:             pandas.DataFrame containing the SRA accessions (see srauids_to_accessions)
     :param archs4_metadata:             pandas.DataFrame containing the extracted ARCHS4 metadata (see archs4.get_filtered_sample_metadata)
+    :param geo_metadata:                pandas.DataFrame containing the fetched GEO metadata (see geo.geo_metadata)
 
     :return:                            pandas.DataFrame containing annotated ARCHS4 metadata
     """
@@ -232,6 +234,12 @@ def merge_to_annotated_metadata_frame(
             archs4_annotated_nonduplicated,
             archs4_annotated_duplicated.loc[all_equal_idx, :]
         ]
+    )
+    
+    archs4_annotated_deduplicated = archs4_annotated_deduplicated.merge(
+        geo_metadata,
+        on = 'geo',
+        how = 'inner'
     )
     return archs4_annotated_deduplicated.reset_index(drop = True)
 
