@@ -6,7 +6,7 @@ import pandas as pd
 from . import dbutils
 from . import concurrency
 from . import parsers
-from exceptions import ResponseNotOKError
+from .exceptions import ResponseNotOKError
 
 
 logging.basicConfig(

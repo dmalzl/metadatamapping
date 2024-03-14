@@ -2,12 +2,12 @@ import time
 import urllib
 import logging
 import http
-from exceptions import ResponseNotOKError
 
 import itertools as it
 
 from Bio import Entrez
 from typing import Callable, Any, Union, Iterable
+from .exceptions import ResponseNotOKError
 
 
 def get_chunklimits(iterable_length: int, chunksize: int) -> tuple[int, int]:
