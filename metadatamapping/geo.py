@@ -6,6 +6,7 @@ import multiprocessing as mp
 
 from . import dbutils
 from . import parsers
+from . import concurrency
 from .exceptions import ResponseNotOKError
 from typing import Union
 
@@ -129,18 +130,6 @@ def fetch_geo_metadata(
         'Sample_growth_protocol_ch1': 'growth_protocol'
     }
 
-    def sequential_writer(table, out):
-        table.to_csv(
-            out,
-            sep = '\t',
-            mode = 'a',
-            index = False
-        )
-
-    def concurrent_writer(table, out, lock):
-        with lock:
-            sequential_writer(table, out)
-
     def write_to_file(d, out, lock):
         table = pd.DataFrame.from_dict(
             d,
@@ -152,15 +141,17 @@ def fetch_geo_metadata(
         )
         
         if filelock:
-            concurrent_writer(
-                # sort columns to force same order for all chunks
-                table.loc[:, sorted(table.columns)],
+            concurrency.concurrent_writer(
+                table,
                 out,
                 lock
             )
         
         else:
-            sequential_writer(table, outfilename)
+            concurrency.sequential_writer(
+                table, 
+                out
+            )
 
     metadata = {}
     already_fetched_gses = {}
@@ -188,7 +179,7 @@ def fetch_geo_metadata(
                 filelock
             )
 
-            metadata = dict()
+            metadata = {}
             logging.info(f'Written metadata for accessions {start} to {i}')
 
     logging.info(f'finishing up. writing {len(metadata)} remaining metadata items')

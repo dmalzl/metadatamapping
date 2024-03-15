@@ -3,7 +3,7 @@ import logging
 
 from Bio import Entrez
 from functools import partial
-from typing import Callable, Any, Union, Iterable
+from typing import Callable, Any, Union, Iterable, TextIO
 from os import PathLike
 
 import multiprocessing as mp
@@ -48,10 +48,17 @@ def map_accessions_to_uids(
     :return:               None
     """
     logging.info('starting mapping process')
-    write_to_file = (
-        concurrency.write_to_file_multiprocess if filelock 
-        else concurrency.write_to_file_singleprocess
-    )
+
+    def write_to_file(l, out, lock):
+        table = pd.DataFrame(
+            l,
+            columns = ['accession', 'uid', 'database']
+        )
+        if lock:
+            concurrency.concurrent_writer(table, out, lock)
+
+        else:
+            concurrency.sequential_writer(table, out)
     
     uid_list = []
     start = accessions[0][0]
