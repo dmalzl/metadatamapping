@@ -142,14 +142,18 @@ def fetch_geo_metadata(
 
     def write_to_file(d, out, lock):
         table = pd.DataFrame.from_dict(
-            metadata,
+            d,
             orient = 'index'
+        )
+        table.reset_index(
+            names = 'GSM',
+            inplace = True
         )
         if filelock:
             concurrent_writer(
                 table,
-                outfilename,
-                filelock
+                out,
+                lock
             )
         
         else:
