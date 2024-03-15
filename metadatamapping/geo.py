@@ -149,9 +149,11 @@ def fetch_geo_metadata(
             names = 'GSM',
             inplace = True
         )
+        
         if filelock:
             concurrent_writer(
-                table,
+                # sort columns to force same order for all chunks
+                table.loc[:, sorted(table.columns)],
                 out,
                 lock
             )
