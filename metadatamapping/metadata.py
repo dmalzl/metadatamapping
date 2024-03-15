@@ -312,7 +312,7 @@ def geo_metadata(
         geo_accessions,
         outfilename,
         'GSM',
-        'geo_accession'
+        ['geo_accession']
     )
     concurrency.process_data_in_chunks(
         mapping_table.iterrows(),
