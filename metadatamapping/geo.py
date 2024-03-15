@@ -88,6 +88,10 @@ def fetch_and_parse_gse_softs(
         
         gse_metadata = parsers.parse_soft_metadata(gse_soft, gse_keys)
 
+        # seems to be the case if series was deleted
+        if gse_metadata['series_submission_date'] == 'N/A':
+            continue
+
         this_submission_date = parsers.to_date(
             gse_metadata['series_submission_date']
         )
