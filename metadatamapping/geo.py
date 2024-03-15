@@ -133,7 +133,8 @@ def fetch_geo_metadata(
         table.to_csv(
             out,
             sep = '\t',
-            mode = 'a'
+            mode = 'a',
+            index = False
         )
 
     def concurrent_writer(table, out, lock):
