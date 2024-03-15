@@ -178,8 +178,9 @@ def fetch_geo_metadata(
             metadata = {}
             logging.info(f'Written metadata for accessions {start} to {i}')
 
-    logging.info(f'finishing up. writing {len(metadata)} remaining metadata items')
+    logging.info('finishing up.')
     if metadata:
+        logging.info(f'writing {len(metadata)} remaining metadata items')
         write_to_file(
             metadata,
             outfilename,
