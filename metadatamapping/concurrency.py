@@ -20,10 +20,10 @@ def sequential_writer(
     table: pd.DataFrame, 
     outfilename: Union[PathLike, str]
 ) -> None:
-    header = False if os.path.exists(outfilename) else True
+    write_header = False if os.path.exists(outfilename) else True
 
     # this ensures that columns are well aligned between writes
-    if header:
+    if not write_header:
         columns = read_header(outfilename, sep = '\t')
         template = pd.DataFrame(columns = columns)
         table = pd.concat([template, table])
@@ -33,7 +33,7 @@ def sequential_writer(
         sep = '\t',
         mode = 'a',
         index = False,
-        header = header
+        header = write_header
     )
 
 
