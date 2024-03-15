@@ -101,10 +101,6 @@ def fetch_and_parse_gse_softs(
         
         if this_submission_date < oldest_submission_date:
             original_series_metadata = gse_metadata
-            
-    for key, value in original_series_metadata.items():
-        if isinstance(value, list):
-            original_series_metadata[key] = ''.join(value)
     
     return original_series_metadata
 

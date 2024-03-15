@@ -336,7 +336,11 @@ def parse_soft_metadata(
         
         else:
             metadata_dict[key] = value
-    
+
+    for key, value in metadata_dict.items():
+        if isinstance(value, list):
+            metadata_dict[key] = ''.join(value)
+            
     return metadata_dict
 
 
