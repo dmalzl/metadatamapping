@@ -1,12 +1,13 @@
 import requests
-import logging 
+import logging
 
 import pandas as pd
+import multiprocessing as mp
 
 from . import dbutils
-from . import concurrency
 from . import parsers
 from .exceptions import ResponseNotOKError
+from typing import Union
 
 
 logging.basicConfig(
@@ -107,24 +108,59 @@ def fetch_and_parse_gse_softs(
     return original_series_metadata
 
 
-def fetch_geo_metadata(geo_accessions: list[tuple[str, str]]) -> pd.DataFrame:
+def fetch_geo_metadata(
+    geo_accessions: pd.DataFrame, 
+    outfilename: str,
+    filelock: Union[mp.Manager().Lock, None] = None
+    ) -> None:
     """
     retrieves the metadata for a list of GEO accessions and 
     returns it as a pandas.DataFrame
 
-    :param geo_accessions:  list of GSM, GSE accession tuples. 
+    :param geo_accessions:  pandas.DataFrame containing at least two columns GSM and GSE 
                             GSE can be a string of multiple GSE accessions separated by a ','
+    :param outfilename:     path to the file to write the retrieved UID mappings to
+    :param filelock:        A Lock object used to savely write to the outfile in case of concurrent usage
 
-    :return:                pandas.DataFrame of retrieved metadata
+    :return:                None
     """
     gsm_keys = {
         'Sample_treatment_protocol_ch1': 'treatment_protocol',
         'Sample_growth_protocol_ch1': 'growth_protocol'
     }
 
+    def sequential_writer(table, out):
+        table.to_csv(
+            out,
+            sep = '\t',
+            mode = 'a'
+        )
+
+    def concurrent_writer(table, out, lock):
+        with lock:
+            sequential_writer(table, out)
+
+    def write_to_file(d, out, lock):
+        table = pd.DataFrame.from_dict(
+            metadata,
+            orient = 'index'
+        )
+        if filelock:
+            concurrent_writer(
+                table,
+                outfilename,
+                filelock
+            )
+        
+        else:
+            sequential_writer(table, outfilename)
+
     metadata = {}
     already_fetched_gses = {}
-    for gsm, gse in geo_accessions:
+    start = geo_accessions[0][0]
+    for i, row in geo_accessions:
+        gsm = row.GSM
+        gse = row.GSE
         gsm_soft = dbutils.retry(
             fetch_soft_metadata,
             gsm
@@ -138,38 +174,20 @@ def fetch_geo_metadata(geo_accessions: list[tuple[str, str]]) -> pd.DataFrame:
         )
         metadata[gsm] = gsm_metadata
 
-    metadata = pd.DataFrame.from_dict(
-        metadata,
-        orient = 'index'
-    )
+        if not len(metadata) % 1000:
+            write_to_file(
+                metadata, 
+                outfilename, 
+                filelock
+            )
 
-    return metadata
+            metadata = dict()
+            logging.info(f'Written metadata for accessions {start} to {i}')
 
-
-def geo_metadata(
-    geo_accessions: list[tuple[str, str]], 
-    n_processes: int = 1,
-    chunksize = 10000
-) -> pd.DataFrame:
-    """
-    retrieves the metadata for a list of GEO accessions and 
-    returns it as a pandas.DataFrame. More or less a concurrent version
-    of `fetch_geo_metadata`
-
-    :param geo_accessions:  list of GSM, GSE accession tuples. 
-                            GSE can be a string of multiple GSE accessions separated by a ','
-    :param n_processes:     how many concurrent processes to use to retrieve the data
-    :param chunksize:       size of the chunks that are used for each process.
-
-    :return:                pandas.DataFrame of retrieved metadata
-    """
-    
-    metadata_frames = concurrency.process_data_in_chunks(
-        geo_accessions,
-        fetch_geo_metadata,
-        n_processes = n_processes,
-        chunksize = chunksize,
-        function_writes_file = False
-    )
-
-    return pd.concat(metadata_frames)
+    logging.info(f'finishing up. writing {len(metadata)} remaining metadata items')
+    if metadata:
+        write_to_file(
+            metadata,
+            outfilename,
+            filelock
+        )

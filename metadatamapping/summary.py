@@ -8,7 +8,6 @@ from os import PathLike
 
 import multiprocessing as mp
 import pandas as pd
-import itertools as it
 
 from . import concurrency
 from . import dbutils
@@ -161,7 +160,12 @@ def data_from_esummary(
     return data.drop_duplicates().reset_index(drop = True)
 
 
-def uids_to_summaries(uid_list, db, parse_function, data_parsers):
+def uids_to_summaries(
+    uid_list: Iterable[str], 
+    db: str, 
+    parse_function: Callable, 
+    data_parsers: dict[str, Any]
+) -> pd.DataFrame:
     """
     retrieves summaries for uids from eSummary and returns a pandas.DataFrame with columns = keys of data_parsers
     Values in these columns are determined by parse_function

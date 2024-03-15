@@ -8,6 +8,7 @@ from . import concurrency
 from . import dbutils
 from . import metasra
 from . import metadatautils
+from . import geo
 from typing import Union, Iterable
 from os import PathLike
 
@@ -35,9 +36,11 @@ def map_accessions_to_srauids(
     
     :return:              None
     """
-    mapping_table = parsers.get_not_yet_mapped(
+    mapping_table = parsers.get_not_yet_mapped_uids(
         table,
-        outfilename
+        outfilename,
+        'accession',
+        ['geo_accession', 'srx_accession', 'biosample_accession']
     )
     
     concurrency.process_data_in_chunks(
@@ -235,7 +238,7 @@ def merge_to_annotated_metadata_frame(
             archs4_annotated_duplicated.loc[all_equal_idx, :]
         ]
     )
-    
+
     archs4_annotated_deduplicated = archs4_annotated_deduplicated.merge(
         geo_metadata,
         on = 'geo',
@@ -284,3 +287,37 @@ def annotated_with_metasra_and_treatment(annotated_frame: pd.DataFrame, metasra_
     )
 
     return metasra_annotated
+
+
+def geo_metadata(
+    geo_accessions: pd.DataFrame, 
+    outfilename: Union[PathLike, str],
+    n_processes: int = 1,
+    chunksize = 10000
+) -> pd.DataFrame:
+    """
+    retrieves the metadata for a list of GEO accessions and 
+    returns it as a pandas.DataFrame. More or less a concurrent version
+    of `fetch_geo_metadata`
+
+    :param geo_accessions:  pandas.DataFrame containing at least two columns GSM and GSE 
+                            GSE can be a string of multiple GSE accessions separated by a ','
+    :param outfilename:     name of the file the retrieved metadata should be written to
+    :param n_processes:     how many concurrent processes to use to retrieve the data
+    :param chunksize:       size of the chunks that are used for each process.
+
+    :return:                pandas.DataFrame of retrieved metadata
+    """
+    mapping_table = parsers.get_not_yet_mapped_accessions(
+        geo_accessions,
+        outfilename,
+        'GSM',
+        'geo_accession'
+    )
+    concurrency.process_data_in_chunks(
+        mapping_table.iterrows(),
+        geo.fetch_geo_metadata,
+        outfilename = outfilename,
+        n_processes = n_processes,
+        chunksize = chunksize
+    )

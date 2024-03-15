@@ -237,7 +237,7 @@ accession_matchers = {
 }
 
 
-def read_retrieved_accessions(filename: Union[PathLike, str]) -> set[str]:
+def read_retrieved_accessions(filename: Union[PathLike, str], accession_column: str) -> set[str]:
     """
     reads the file given with filename and return a list of unique accessions
     the file has to contain a table with an 'accession' column
@@ -250,39 +250,35 @@ def read_retrieved_accessions(filename: Union[PathLike, str]) -> set[str]:
         filename,
         sep = '\t'
     )
-    return set(accession_map.accession)
+    return set(accession_map[accession_column])
 
 
-def get_not_yet_mapped(table: pd.DataFrame, outfilename: Union[PathLike, str]) -> pd.DataFrame:
+def get_not_yet_mapped_accessions(
+    table: pd.DataFrame, 
+    outfilename: Union[PathLike, str], 
+    accession_column: str,
+    compare_to_columns: list = []
+) -> pd.DataFrame:
     """
-    If outfilename does not exist yet it is created and table is returned as is. If outfilename exists
+    If outfilename does not exist yet table is returned as is. If outfilename exists
     accessions contained in it are already mapped and thus will be removed from table before returning it
     
-    :param table:         pandas.DataFrame containing the accessions we want to retrieve
-    :param outfilename:   path to a file the mapping output should be or is written to
+    :param table:               pandas.DataFrame containing the accessions we want to retrieve
+    :param outfilename:         path to a file the mapping output should be or is written to
+    :param accession_column:    column of the outfile containing the already retrieved accessions
+    :param compare_to_columns:  list of columns in table to compare accession to to determine if any of them was already fetched
     
     :return:              pandas.DataFrame containing only the accessions that are not already found in outfilename
     """
-    # this can definitely be refactored but I leave it as is for now
     if not os.path.exists(outfilename):
-        retrieved_accessions = set()
-        with open(outfilename, 'w') as outfile:
-            outfile.write(
-                'accession\tuid\tdatabase\n'
-            )
-            
         return table
 
-    else:
-        retrieved_accessions = read_retrieved_accessions(outfilename)
-        retrieved = table.apply(
-            lambda x: any(
-                x[acc] in retrieved_accessions 
-                for acc in ['geo_accession', 'srx_accession', 'biosample_accession']
-            ),
-            axis = 1
-        )
-        return table.loc[~retrieved, :]
+    retrieved_accessions = read_retrieved_accessions(outfilename, accession_column)
+    retrieved = table.apply(
+        lambda x: any(x[acc] in retrieved_accessions for acc in compare_to_columns),
+        axis = 1
+    )
+    return table.loc[~retrieved, :]
     
 
 def parse_soft_line(line: str) -> tuple[str, str]:
