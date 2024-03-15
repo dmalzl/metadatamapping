@@ -240,7 +240,7 @@ def merge_to_annotated_metadata_frame(
     )
 
     archs4_annotated_deduplicated = archs4_annotated_deduplicated.merge(
-        geo_metadata,
+        geo_metadata.rename(columns = {'GSM': 'geo'}),
         on = 'geo',
         how = 'inner'
     )
@@ -289,7 +289,7 @@ def annotated_with_metasra_and_treatment(annotated_frame: pd.DataFrame, metasra_
     return metasra_annotated
 
 
-def geo_metadata(
+def fetch_geo_metadata(
     geo_accessions: pd.DataFrame, 
     outfilename: Union[PathLike, str],
     n_processes: int = 1,

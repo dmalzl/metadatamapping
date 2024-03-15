@@ -70,7 +70,7 @@ geo_accessions = pd.DataFrame(
     columns = ['GSM', 'GSE']
 )
 
-geo_metadata = metadata.geo_metadata(
+geo_metadata = metadata.fetch_geo_metadata(
     geo_accessions,
     '/path/to/outputfile',
     n_processes = 24
