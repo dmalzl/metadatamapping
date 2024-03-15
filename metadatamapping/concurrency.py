@@ -40,7 +40,7 @@ def sequential_writer(
 def concurrent_writer(
     table: pd.DataFrame, 
     outfilename: Union[PathLike, str], 
-    filelock: mp.Manager.Lock
+    filelock: mp.Manager().Lock
 ) -> None:
     with filelock:
         sequential_writer(table, outfilename)
