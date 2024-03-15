@@ -290,7 +290,7 @@ def parse_soft_line(line: str) -> tuple[str, str]:
     :return:        
     """
     key, value = line.split(' = ', maxsplit = 1)
-    return key[1:], value
+    return key[1:].replace('\t', ' '), value.replace('\t', ' ')
 
 
 def to_list(item: Union[str, list]) -> list[str]:
@@ -300,15 +300,50 @@ def to_list(item: Union[str, list]) -> list[str]:
     return [item]
 
 
+def add_missing_keys(
+    metadata_dict: dict[str, str], 
+    retain_keys: dict[str, str]
+) -> dict[str, str]:
+    """
+    ensures that all keys in retain_keys are present in the metadata dictionary
+
+    :param metadata_dict:   dictionary containing the GEO metadata
+    :param retain_keys:     dictionary containing the keys to retain
+
+    :return:                metadata_dict with missing keys added (value is N/A)
+    """
+    # values because the retain_keys is a map
+    for key in retain_keys.values():
+        if not key in metadata_dict:
+            metadata_dict[key] = 'N/A'
+    
+    return metadata_dict
+
+
+def list_values_to_string(metadata_dict: dict[str, Union[str, list[str]]]) -> dict[str, str]:
+    """
+    concatenates those values that are lists to string
+
+    :param metadata_dict:   dictionary containing the GEO metadata possibly with lists of strings as values
+
+    :return:                metadata_dict with lists of strings concatenated
+    """
+    for key, value in metadata_dict.items():
+        if isinstance(value, list):
+            metadata_dict[key] = ' '.join(value)
+
+    return metadata_dict
+
+
 def parse_soft_metadata(
     soft_metadata: list[str], 
-    retain_keys: dict[str, str] = {}
+    retain_keys: dict[str, str]
 ) -> dict[str, str]: 
     """
     parses a list of SOFT formatted strings and returns a dictionary
-    containing the parsed information. If retain_keys is given, only retains
-    those the keys contained as keys and replaces them with value in the final
-    result (e.g. retain_keys = {'key': 'other_key'} -> result = {'other_key': <metadata>})
+    containing the parsed information. Only retains those the keys contained 
+    as keys and replaces them with value in the final result 
+    (e.g. retain_keys = {'key': 'other_key'} -> result = {'other_key': <metadata>})
 
     :param soft_metadata:   list of SOFT formatted strings
     :param retain_keys:     dictionary containing the keys to retain as keys and
@@ -316,18 +351,16 @@ def parse_soft_metadata(
     
     :return:                dictionary containing the parsed metadatas
     """
-    retain_all = True if not retain_keys else False
     metadata_dict = {}
     for line in soft_metadata:
         if not line.startswith('!'):
             continue
             
         key, value = parse_soft_line(line)
-        if key not in retain_keys and not retain_all:
+        if key not in retain_keys:
             continue
         
-        if not retain_all:
-            key = retain_keys[key]
+        key = retain_keys[key]
             
         if key in metadata_dict:
             tmp = to_list(metadata_dict[key])
@@ -337,9 +370,11 @@ def parse_soft_metadata(
         else:
             metadata_dict[key] = value
 
-    for key, value in metadata_dict.items():
-        if isinstance(value, list):
-            metadata_dict[key] = ' '.join(value)
+    metadata_dict = list_values_to_string(metadata_dict)
+    metadata_dict = add_missing_keys(
+        metadata_dict,
+        retain_keys
+    )
 
     return metadata_dict
 
